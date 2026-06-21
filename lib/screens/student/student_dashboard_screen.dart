@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:iconsax/iconsax.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../constants/app_colors.dart';
 import '../../models/admit_card_request_model.dart';
@@ -34,6 +37,8 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   final PdfService _pdfService = PdfService();
   final RoleGuardService _roleGuardService = RoleGuardService();
 
+  StreamSubscription<List<Map<String, dynamic>>>? _studentSubscription;
+
   StudentModel? _student;
   AdmitCardRequestModel? _currentRequest;
 
@@ -47,48 +52,49 @@ class _StudentDashboardScreenState extends State<StudentDashboardScreen> {
   bool _isApplying = false;
 
   @override
-  @override
-void initState() {
-  super.initState();
-  _checkAccessAndLoadData();
-}
+  void initState() {
+    super.initState();
+    _checkAccessAndLoadData();
+  }
 
   Future<void> _checkAccessAndLoadData() async {
-  final role = await _roleGuardService.getCurrentUserRole();
+    final role = await _roleGuardService.getCurrentUserRole();
 
-  if (!mounted) return;
+    if (!mounted) return;
 
-  if (role == null) {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
-      (route) => false,
-    );
-    return;
+    if (role == null) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (role == 'admin') {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
+        (route) => false,
+      );
+      return;
+    }
+
+    if (role == 'student') {
+      await _loadDashboardData();
+
+      if (mounted && _student != null) {
+        _listenToStudentChanges();
+      }
+    }
   }
 
-  if (role == 'admin') {
-    Navigator.pushAndRemoveUntil(
-      context,
-      MaterialPageRoute(
-        builder: (_) => const AdminDashboardScreen(),
-      ),
-      (route) => false,
-    );
-    return;
-  }
-
-  if (role == 'student') {
-    await _loadDashboardData();
-  }
-}
-
-  Future<void> _loadDashboardData() async {
-    setState(() {
-      _isLoading = true;
-    });
+  Future<void> _loadDashboardData({bool showLoader = true}) async {
+    if (showLoader) {
+      setState(() {
+        _isLoading = true;
+      });
+    }
 
     try {
       final student = await _studentService.getCurrentStudent();
@@ -100,22 +106,20 @@ void initState() {
 
         Navigator.pushAndRemoveUntil(
           context,
-          MaterialPageRoute(
-            builder: (_) => const LoginScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const LoginScreen()),
           (route) => false,
         );
 
         return;
       }
 
-      final semesterCourses =
-          await _courseService.getCoursesBySemester(student.semester);
+      final semesterCourses = await _courseService.getCoursesBySemester(
+        student.semester,
+      );
 
       final allCourses = await _courseService.getAllCourses();
 
-      final currentRequest =
-          await _admitCardService.getCurrentStudentRequest(
+      final currentRequest = await _admitCardService.getCurrentStudentRequest(
         studentAuthId: student.authUserId,
         semester: student.semester,
       );
@@ -123,8 +127,9 @@ void initState() {
       List<CourseModel> selectedCourses = List.from(semesterCourses);
 
       if (currentRequest != null) {
-        selectedCourses =
-            await _admitCardService.getCoursesForRequest(currentRequest.id);
+        selectedCourses = await _admitCardService.getCoursesForRequest(
+          currentRequest.id,
+        );
       }
 
       if (!mounted) return;
@@ -135,6 +140,7 @@ void initState() {
         _allCourses = allCourses;
         _selectedCourses = selectedCourses;
         _currentRequest = currentRequest;
+        _extraSelectedCourse = null;
         _isLoading = false;
       });
     } catch (error) {
@@ -147,24 +153,66 @@ void initState() {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.dangerRed,
-          content: Text(
-            error.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceAll('Exception: ', '')),
         ),
       );
     }
   }
 
+  void _listenToStudentChanges() {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+
+    if (currentUser == null) return;
+
+    _studentSubscription?.cancel();
+
+    _studentSubscription = Supabase.instance.client
+        .from('students')
+        .stream(primaryKey: ['id'])
+        .eq('auth_user_id', currentUser.id)
+        .listen(
+          (rows) async {
+            if (!mounted || rows.isEmpty) return;
+
+            final updatedStudent = StudentModel.fromJson(rows.first);
+            final oldSemester = _student?.semester;
+
+            if (oldSemester != null && oldSemester != updatedStudent.semester) {
+              await _loadDashboardData(showLoader: false);
+
+              if (!mounted) return;
+
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  backgroundColor: AppColors.primaryBlue,
+                  content: Text(
+                    'Semester updated to ${updatedStudent.semester}. Dashboard refreshed.',
+                  ),
+                ),
+              );
+
+              return;
+            }
+
+            setState(() {
+              _student = updatedStudent;
+            });
+          },
+          onError: (error) {
+            debugPrint('Student realtime error: $error');
+          },
+        );
+  }
+
   Future<void> _logout() async {
+    await _studentSubscription?.cancel();
     await _authService.logout();
 
     if (!mounted) return;
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
       (route) => false,
     );
   }
@@ -257,9 +305,7 @@ void initState() {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.dangerRed,
-          content: Text(
-            error.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceAll('Exception: ', '')),
         ),
       );
     } finally {
@@ -272,58 +318,55 @@ void initState() {
   }
 
   Future<void> _downloadAdmitCard() async {
-  final student = _student;
-  final request = _currentRequest;
+    final student = _student;
+    final request = _currentRequest;
 
-  if (student == null || request == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: AppColors.dangerRed,
-        content: Text('Student or request information is missing.'),
-      ),
-    );
-    return;
-  }
-
-  if (request.status != 'approved') {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: AppColors.pendingOrange,
-        content: Text('Your admit card is not approved yet.'),
-      ),
-    );
-    return;
-  }
-
-  try {
-    await _pdfService.generateAndDownloadAdmitCard(
-      student: student,
-      request: request,
-      courses: _selectedCourses,
-    );
-
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        backgroundColor: AppColors.successGreen,
-        content: Text('Admit card downloaded successfully.'),
-      ),
-    );
-  } catch (error) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        backgroundColor: AppColors.dangerRed,
-        content: Text(
-          error.toString().replaceAll('Exception: ', ''),
+    if (student == null || request == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.dangerRed,
+          content: Text('Student or request information is missing.'),
         ),
-      ),
-    );
-  }
-}
+      );
+      return;
+    }
 
+    if (request.status != 'approved') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.pendingOrange,
+          content: Text('Your admit card is not approved yet.'),
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _pdfService.generateAndDownloadAdmitCard(
+        student: student,
+        request: request,
+        courses: _selectedCourses,
+      );
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          backgroundColor: AppColors.successGreen,
+          content: Text('Admit card downloaded successfully.'),
+        ),
+      );
+    } catch (error) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: AppColors.dangerRed,
+          content: Text(error.toString().replaceAll('Exception: ', '')),
+        ),
+      );
+    }
+  }
 
   String get _status {
     final request = _currentRequest;
@@ -368,11 +411,7 @@ void initState() {
                 onPressed: () {
                   Scaffold.of(context).openDrawer();
                 },
-                icon: const Icon(
-                  Iconsax.menu_1,
-                  color: Colors.white,
-                  size: 28,
-                ),
+                icon: const Icon(Iconsax.menu_1, color: Colors.white, size: 28),
               );
             },
           ),
@@ -504,11 +543,7 @@ void initState() {
             color: iconColor.withOpacity(0.10),
             borderRadius: BorderRadius.circular(18),
           ),
-          child: Icon(
-            icon,
-            color: iconColor,
-            size: 30,
-          ),
+          child: Icon(icon, color: iconColor, size: 30),
         ),
         const SizedBox(width: 18),
         Expanded(
@@ -550,11 +585,7 @@ void initState() {
       ),
       child: Row(
         children: [
-          const Icon(
-            Iconsax.teacher,
-            color: AppColors.primaryBlue,
-            size: 34,
-          ),
+          const Icon(Iconsax.teacher, color: AppColors.primaryBlue, size: 34),
           const SizedBox(width: 18),
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -615,22 +646,22 @@ void initState() {
                         ? 'Course selection disabled after application'
                         : 'Choose extra course',
                     filled: true,
-                    fillColor: isDisabled
-                        ? Colors.grey.shade100
-                        : Colors.white,
+                    fillColor: isDisabled ? Colors.grey.shade100 : Colors.white,
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
                       vertical: 15,
                     ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
-                      borderSide:
-                          const BorderSide(color: AppColors.borderColor),
+                      borderSide: const BorderSide(
+                        color: AppColors.borderColor,
+                      ),
                     ),
                   ),
                   items: _extraCourseOptions.map((course) {
@@ -778,6 +809,12 @@ void initState() {
   }
 
   @override
+  void dispose() {
+    _studentSubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final student = _student;
     final bool isMobile = Responsive.isMobile(context);
@@ -786,15 +823,10 @@ void initState() {
       backgroundColor: AppColors.background,
       drawer: student == null
           ? null
-          : SidebarDrawer(
-              student: student,
-              onLogout: _logout,
-            ),
+          : SidebarDrawer(student: student, onLogout: _logout),
       body: _isLoading
           ? const Center(
-              child: CircularProgressIndicator(
-                color: AppColors.primaryBlue,
-              ),
+              child: CircularProgressIndicator(color: AppColors.primaryBlue),
             )
           : _buildMainContent(isMobile),
     );
