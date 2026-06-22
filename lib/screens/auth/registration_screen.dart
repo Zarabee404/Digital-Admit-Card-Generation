@@ -28,7 +28,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _batchController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
-  final TextEditingController _confirmPasswordController = TextEditingController();
+  final TextEditingController _confirmPasswordController =
+      TextEditingController();
 
   int? _selectedSemester;
 
@@ -99,9 +100,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const StudentDashboardScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const StudentDashboardScreen()),
         (route) => false,
       );
     } catch (error) {
@@ -110,9 +109,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.dangerRed,
-          content: Text(
-            error.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceAll('Exception: ', '')),
         ),
       );
     } finally {
@@ -175,10 +172,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
           dropdownColor: Colors.white,
           decoration: InputDecoration(
             hintText: 'Select semester',
-            hintStyle: const TextStyle(
-              color: AppColors.hintText,
-              fontSize: 14,
-            ),
+            hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
             filled: true,
             fillColor: Colors.white,
             contentPadding: const EdgeInsets.symmetric(
@@ -279,9 +273,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                       ),
                     ),
                     const SizedBox(width: 18),
-                    Expanded(
-                      child: _buildSemesterDropdown(),
-                    ),
+                    Expanded(child: _buildSemesterDropdown()),
                   ],
                 ),
           const SizedBox(height: 18),
@@ -346,9 +338,7 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
                   onTap: () {
                     Navigator.pushReplacement(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const LoginScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const LoginScreen()),
                     );
                   },
                   child: const Text(
@@ -381,7 +371,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: isMobile ? 520 : 760,
-                minHeight: MediaQuery.of(context).size.height -
+                minHeight:
+                    MediaQuery.of(context).size.height -
                     MediaQuery.of(context).padding.top -
                     MediaQuery.of(context).padding.bottom -
                     64,

@@ -72,9 +72,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
 
       Navigator.pushAndRemoveUntil(
         context,
-        MaterialPageRoute(
-          builder: (_) => const LoginScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const LoginScreen()),
         (route) => false,
       );
     } catch (error) {
@@ -83,9 +81,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.dangerRed,
-          content: Text(
-            error.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceAll('Exception: ', '')),
         ),
       );
     } finally {
@@ -110,7 +106,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: isMobile ? 520 : 620,
-                minHeight: MediaQuery.of(context).size.height -
+                minHeight:
+                    MediaQuery.of(context).size.height -
                     MediaQuery.of(context).padding.top -
                     MediaQuery.of(context).padding.bottom -
                     64,

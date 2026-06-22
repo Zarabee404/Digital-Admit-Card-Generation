@@ -32,9 +32,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (role == 'admin') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const AdminDashboardScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
       );
       return;
     }
@@ -42,18 +40,14 @@ class _SplashScreenState extends State<SplashScreen> {
     if (role == 'student') {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(
-          builder: (_) => const StudentDashboardScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const StudentDashboardScreen()),
       );
       return;
     }
 
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(
-        builder: (_) => const LoginScreen(),
-      ),
+      MaterialPageRoute(builder: (_) => const LoginScreen()),
     );
   }
 
@@ -61,11 +55,7 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return const Scaffold(
       backgroundColor: AppColors.darkBlue,
-      body: Center(
-        child: CircularProgressIndicator(
-          color: Colors.white,
-        ),
-      ),
+      body: Center(child: CircularProgressIndicator(color: Colors.white)),
     );
   }
 }

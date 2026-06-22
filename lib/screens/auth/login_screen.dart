@@ -58,16 +58,12 @@ class _LoginScreenState extends State<LoginScreen> {
       if (role == 'admin') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const AdminDashboardScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const AdminDashboardScreen()),
         );
       } else if (role == 'student') {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => const StudentDashboardScreen(),
-          ),
+          MaterialPageRoute(builder: (_) => const StudentDashboardScreen()),
         );
       }
     } catch (error) {
@@ -76,9 +72,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           backgroundColor: AppColors.dangerRed,
-          content: Text(
-            error.toString().replaceAll('Exception: ', ''),
-          ),
+          content: Text(error.toString().replaceAll('Exception: ', '')),
         ),
       );
     } finally {
@@ -207,9 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           )
                         : const Text(
                             'Send Link',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
                   ),
                 ),
@@ -292,8 +284,9 @@ class _LoginScreenState extends State<LoginScreen> {
           constraints: const BoxConstraints(maxWidth: 500),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment:
-                isMobile ? MainAxisAlignment.start : MainAxisAlignment.center,
+            mainAxisAlignment: isMobile
+                ? MainAxisAlignment.start
+                : MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text(
@@ -406,9 +399,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return formContainer;
     }
 
-    return Expanded(
-      child: formContainer,
-    );
+    return Expanded(child: formContainer);
   }
 
   @override
@@ -424,7 +415,8 @@ class _LoginScreenState extends State<LoginScreen> {
             child: ConstrainedBox(
               constraints: BoxConstraints(
                 maxWidth: isMobile ? 520 : 1080,
-                minHeight: MediaQuery.of(context).size.height -
+                minHeight:
+                    MediaQuery.of(context).size.height -
                     MediaQuery.of(context).padding.top -
                     MediaQuery.of(context).padding.bottom -
                     64,
